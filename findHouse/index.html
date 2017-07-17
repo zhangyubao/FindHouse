@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+		<title>地图找房</title>
+		<script type="text/javascript" src="http://maps.google.cn/maps/api/js?key=AIzaSyA1wj36Jr6W46WQ1JpQsoQZxHMQm5pEQDs"></script>
+		<!--List.js资源库-->
+		<script src="http://listjs.com/assets/javascripts/list.min.js"></script>
+
+		<script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+		<script type="text/javascript" src="../mapmarker.jquery.js"></script>
+		<script type="text/javascript" src="js/house.js"></script>
+		<script type="text/javascript" src="js/marker.js"></script>
+
+		<link rel="stylesheet" href="../map.css" />
+		<script type="text/javascript">
+			//关闭详情div
+			function dismiss() {
+				$(".house_detail").hide();
+			}
+
+			function open() {
+				$("#house_detail").show().load("item.html", function() {
+					$("#house_detail").fadeIn(300);
+				});
+			}
+
+			$(document).ready(function() {
+				var currentPage = 1;
+				var list;
+				var options = {
+					valueNames: ['listingname', 'square', 'village', { attr: 'src', name: 'icon' }, { attr: 'href', name: 'detail_1' }, 'price', { attr: 'href', name: 'detail_2' }],
+					item: '<li><span><a class="detail_1" id="detail_1" target="detail"><img class="icon"/></a><div class="desc"><a class="detail_2" target="detail"><p class="listingname">32 Saint-Charles Ouest</p></a><span><h5 class="price" style="color: #EA7865; font-size: 16px;float: right;">$1,289,000</h5><p class="square"></p></span><p class="village">林肯公园</p></div></span></li>'
+				};
+				var dataurl = 'http://www.realtoraccess.com/app/get/shares/';
+				var defaultmarkers = [];
+				$.get(dataurl, {
+						"page": currentPage,
+						"stype": "listing1",
+					},
+					function(data, status) {
+						var houseArray = JSON.parse(data).listing1;
+						var housesList = [];
+						for(var i = 0; i < houseArray.length; i++) {
+							var obj = houseArray[i];
+							var marker = new Marker(obj.listingname, obj.price, obj.url);
+							var house = new House(obj.listingname, obj.bedroom + '室' + obj.toilet + '卫 | ' + obj.areas, obj.housetype, obj.url, obj.url, obj.imgurl[0], obj.price);
+							defaultmarkers.push(marker);
+							housesList.push(house);
+						}
+						list = new List('houses', options, housesList);
+						var json = "{\"listing1\":" + JSON.stringify(defaultmarkers) + "}";
+						var jsonmarkers = JSON.parse(json);
+						$("#map").mapmarker({ zoom: 12, center: 'Vancouver', markers: jsonmarkers });
+						var listDoms = document.getElementsByTagName("li");
+						//给每个li绑定事件
+						for(var i = 0; i < listDoms.length; i++) {
+							listDoms[i].onclick = function() {
+								$(".house_detail").show().fadeIn(500);
+							}
+						}
+
+//						var listas = document.getElementsByClassName("detail_1");
+//						//给每个li绑定事件
+//						for(var i = 0; i < listas.length; i++) {
+//							listas[i].onclick = function() {
+//								var urld = listas[i].getAttribute('href');
+//								$('.house_detail').innerHTML = urld;
+//							}
+//						}
+					});
+				//滚动到底部加载更多数据
+				var nScrollHight = 0; //滚动距离总长(注意不是滚动条的长度)
+				var nScrollTop = 0; //滚动到的当前位置
+				var nDivHight = $("#list").height();
+				$("#list").scroll(function() {
+					nScrollHight = $(this)[0].scrollHeight;
+					nScrollTop = $(this)[0].scrollTop;
+					if(nScrollTop + nDivHight >= nScrollHight) {
+						nScrollHight = nScrollTop + nDivHight + nDivHight;
+						currentPage++;
+						$.get(dataurl, {
+								"page": currentPage,
+								"stype": "listing1",
+							},
+							function(data, status) {
+								var houseArray = JSON.parse(data).listing1;
+								var addList = [];
+								var addMarkers = [];
+								for(var i = 0; i < houseArray.length; i++) {
+									var obj = houseArray[i];
+									var marker = new Marker(obj.listingname, obj.price, obj.url);
+									var house = new House(obj.listingname, obj.bedroom + '室' + obj.toilet + '卫 | ' + obj.areas, obj.housetype, obj.url, obj.url, obj.imgurl[0], obj.price);
+									addMarkers.push(marker);
+									addList.push(house);
+								}
+								list.add(addList);
+								var json = "{\"listing1\":" + JSON.stringify(addMarkers) + "}";
+								var jsonmarkers = JSON.parse(json);
+								$("#map").mapmarker({ zoom: 12, center: 'Burnaby', markers: jsonmarkers });
+								var listDoms = document.getElementsByTagName("li");
+								//给每个li绑定事件
+								for(var i = 0; i < listDoms.length; i++) {
+									listDoms[i].onclick = function() {
+										$(".house_detail").show().fadeIn(500);
+									}
+								}
+//								var listas = document.getElementsByClassName("detail_1");
+//								//给每个li绑定事件
+//								for(var i = 0; i < listas.length; i++) {
+//									listas[i].onclick = function() {
+//										var urld = listas[i].getAttribute('href');
+//										$('.house_detail').innerHTML = urld;
+//									}
+//								}
+							});
+					}
+
+				});
+			});
+		</script>
+
+	</head>
+
+	<body class='parent'>
+		<div class="container">
+			<aside class="houses" id="houses">
+			<!--	<input class="search" placeholder="房源名称/MSL" />
+				<button class="sort" data-sort="name">搜索</button>-->
+				<ul class="list" id="list"></ul>
+			</aside>
+			<div class="house_detail" style="display: none;">
+				<img src="img/castle.png" style="float: right;padding: 10px;margin-right: 10px;margin-top: 10px;" onclick="dismiss()" />
+				<iframe id="detailID" name="detail" frameborder="0" style="margin-left: 0px; display: block;width:450px; padding-left: 0px;margin-left: 0px; height: 100%;"></iframe>
+			</div>
+			<div id="map" class="map"></div>
+		</div>
+
+	</body>
+
+</html>
